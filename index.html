@@ -236,14 +236,24 @@
         if (isProcessing) return;
         var buttons = document.querySelectorAll(".mcq-btn");
         for(var i=0; i<buttons.length; i++) buttons[i].disabled = true;
+        
         if (guess === currentHindiWord) {
             isProcessing = true;
             btn.classList.add("mcq-correct"); clapSound.play().catch(function(){});
-            if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) { 
-                currentMarks += 1; // 1-2-3 Ladder: Level 1 = 1 Point
+            
+            var msgBox = document.getElementById("status-message");
+
+            if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) {
+                currentMarks += 1; 
                 solvedWordsGlobal.push(currentHindiWord); 
                 document.getElementById("marks-display").innerText = "Marks: " + currentMarks; 
+                msgBox.innerText = "🌟 बहुत बढ़िया! (Excellent!)";
+                msgBox.style.color = "#2e7d32";
+            } else {
+                msgBox.innerText = "पहले ही खेल लिया! (Already played)";
+                msgBox.style.color = "#ff9800";
             }
+            
             document.getElementById("next-btn").style.display = "inline-block"; document.getElementById("skip-btn").style.display = "none";
         } else {
             btn.classList.add("mcq-wrong"); wrongSound.play().catch(function(){});
@@ -264,10 +274,18 @@
             document.getElementById("answer-box").classList.add("glow-success");
             var tiles = document.querySelectorAll("#answer-box .letter-tile"); for(var i=0; i<tiles.length; i++) tiles[i].classList.add("tile-correct");
             document.getElementById("next-btn").style.display = "inline-block"; document.getElementById("skip-btn").style.display = "none"; document.getElementById("clear-btn").style.display = "none";
+            
+            var msgBox = document.getElementById("status-message");
+            clapSound.play().catch(function(){});
+
             if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) {
-                // 1-2-3 Ladder: dynamically grab the level number!
                 currentMarks += parseInt(document.getElementById("level-select").value);
-                solvedWordsGlobal.push(currentHindiWord); document.getElementById("marks-display").innerText = "Marks: " + currentMarks; clapSound.play().catch(function(){});
+                solvedWordsGlobal.push(currentHindiWord); document.getElementById("marks-display").innerText = "Marks: " + currentMarks; 
+                msgBox.innerText = "🌟 बहुत बढ़िया! (Excellent!)";
+                msgBox.style.color = "#2e7d32";
+            } else {
+                msgBox.innerText = "पहले ही बना लिया! (Already built)";
+                msgBox.style.color = "#ff9800";
             }
         } else if (selectedLetters.length === segmentHindi(currentHindiWord).length) {
             currentMarks = Math.max(0, currentMarks - 1); document.getElementById("marks-display").innerText = "Marks: " + currentMarks;
