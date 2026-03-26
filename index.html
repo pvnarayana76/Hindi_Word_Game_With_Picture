@@ -22,7 +22,6 @@
         #answer-box, #scrambled-box { width: 100%; min-height: 10vh; background: #fafafa; border: 1px solid #eee; border-radius: 12px; display: flex; justify-content: center; align-items: center; gap: 10px; padding: 1.5vh; flex-wrap: wrap; }
         #answer-box { border: 2px dashed #bbb; }
         
-        /* MCQ STYLES */
         #mcq-box { width: 100%; display: none; flex-direction: column; gap: 15px; align-items: center; justify-content: center; flex: 1;}
         .mcq-btn { background: #1976d2; color: white; font-size: clamp(24px, 6vmin, 40px); font-weight: bold; padding: 2vh 4vw; width: 80%; border-radius: 12px; border: none; cursor: pointer; box-shadow: 0 5px 0 #0d47a1; transition: 0.1s;}
         .mcq-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #0d47a1; }
@@ -223,7 +222,7 @@
             document.getElementById("mcq-box").style.display = "none"; document.getElementById("clear-btn").style.display = "inline-block";
             var correctTiles = segmentHindi(currentHindiWord);
             availableLetters = correctTiles.slice();
-            if (level === "3") { // Challenge mode gets decoys
+            if (level === "3") { 
                 var pool = [];
                 for(var i=0; i<lessonOrder.length; i++) { var k = lessonOrder[i]; if(keyboardData[k]) pool = pool.concat(keyboardData[k].c).concat(keyboardData[k].v); if(k === currentWordList[currentIndex].lessonOrigin) break;}
                 availableLetters.push(pool[Math.floor(Math.random()*pool.length)]);
@@ -240,7 +239,11 @@
         if (guess === currentHindiWord) {
             isProcessing = true;
             btn.classList.add("mcq-correct"); clapSound.play().catch(function(){});
-            if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) { currentMarks += 2; solvedWordsGlobal.push(currentHindiWord); document.getElementById("marks-display").innerText = "Marks: " + currentMarks; }
+            if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) { 
+                currentMarks += 1; // 1-2-3 Ladder: Level 1 = 1 Point
+                solvedWordsGlobal.push(currentHindiWord); 
+                document.getElementById("marks-display").innerText = "Marks: " + currentMarks; 
+            }
             document.getElementById("next-btn").style.display = "inline-block"; document.getElementById("skip-btn").style.display = "none";
         } else {
             btn.classList.add("mcq-wrong"); wrongSound.play().catch(function(){});
@@ -262,7 +265,8 @@
             var tiles = document.querySelectorAll("#answer-box .letter-tile"); for(var i=0; i<tiles.length; i++) tiles[i].classList.add("tile-correct");
             document.getElementById("next-btn").style.display = "inline-block"; document.getElementById("skip-btn").style.display = "none"; document.getElementById("clear-btn").style.display = "none";
             if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) {
-                currentMarks += (document.getElementById("level-select").value === "2" ? 1 : 2);
+                // 1-2-3 Ladder: dynamically grab the level number!
+                currentMarks += parseInt(document.getElementById("level-select").value);
                 solvedWordsGlobal.push(currentHindiWord); document.getElementById("marks-display").innerText = "Marks: " + currentMarks; clapSound.play().catch(function(){});
             }
         } else if (selectedLetters.length === segmentHindi(currentHindiWord).length) {
