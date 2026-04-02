@@ -200,15 +200,13 @@
     var currentMarks = 0, solvedWordsGlobal = [], synth = window.speechSynthesis, manualVoice = null;
     var currentWordList = [], currentIndex = 0, currentHindiWord = "", availableLetters = [], selectedLetters = [];
     var isProcessing = false;
-    
-    // NEW REPORT CARD VARIABLES
-    var lessonCompletedWords = [];
+    var lessonCompletedWords = []; // NEW: Tracks words solved in the current round
 
     function changeLesson() {
         var lesson = document.getElementById("lesson-select").value;
         currentWordList = shuffleArray(lessonsData[lesson].words.map(function(w) { var o = Object.assign({}, w); o.lessonOrigin = lesson; return o; }));
         currentIndex = 0; 
-        lessonCompletedWords = []; // Reset the counter for the new lesson
+        lessonCompletedWords = []; // Reset for new lesson
         loadWord();
     }
     
@@ -353,7 +351,7 @@
         selectedLetters.forEach(function(l, i) { var d = document.createElement("div"); d.className = "letter-tile"; d.innerText = l; d.onclick = function() { moveLetter(i, false); }; aBox.appendChild(d); });
     }
 
-    // --- SMART REPORT CARD LOGIC ---
+    // --- NEW GRADED REPORT CARD LOGIC ---
     function triggerLessonComplete() {
         pauseTimer(); 
         var currentLessonIdx = lessonOrder.indexOf(document.getElementById("lesson-select").value);
@@ -361,17 +359,27 @@
         
         var totalW = currentWordList.length;
         var compW = lessonCompletedWords.length;
-        var skipW = totalW - compW; // The math never lies!
+        var skipW = totalW - compW; 
+        var percentage = (totalW === 0) ? 0 : (compW / totalW);
 
-        // Zero Effort Detector!
+        // Graded Celebration Logic
         if (compW === 0) {
             document.getElementById("end-lesson-emoji").innerText = "👀";
             document.getElementById("end-lesson-text").innerText = "ध्यान दें! (Attention!)";
-            document.getElementById("end-lesson-text").style.color = "#f57c00";
-        } else {
+            document.getElementById("end-lesson-text").style.color = "#d32f2f"; // Red
+        } else if (percentage < 0.5) { // Less than half solved
+            document.getElementById("end-lesson-emoji").innerText = "🤔";
+            document.getElementById("end-lesson-text").innerText = "और अभ्यास करें! (Needs Practice)";
+            document.getElementById("end-lesson-text").style.color = "#f57c00"; // Orange
+        } else if (percentage < 1) { // More than half, but not perfect
+            document.getElementById("end-lesson-emoji").innerText = "👍";
+            document.getElementById("end-lesson-text").innerText = "अच्छा प्रयास! (Good Try!)";
+            document.getElementById("end-lesson-text").style.color = "#1976d2"; // Blue
+            clapSound.play().catch(function(){});
+        } else { // 100% Perfect
             document.getElementById("end-lesson-emoji").innerText = "🎉";
             document.getElementById("end-lesson-text").innerText = "शानदार! (Brilliant!)";
-            document.getElementById("end-lesson-text").style.color = "#2e7d32";
+            document.getElementById("end-lesson-text").style.color = "#2e7d32"; // Green
             clapSound.play().catch(function(){});
         }
 
@@ -405,7 +413,6 @@
 
     function showFinalSummary() { document.getElementById("end-lesson-overlay").style.display = "none"; document.getElementById("summary-overlay").style.display = "flex"; document.getElementById("final-score-text").innerText = "Total Marks: " + currentMarks; var h = Math.floor(timerSeconds/3600), m = Math.floor((timerSeconds%3600)/60), s = timerSeconds%60; document.getElementById("final-time-text").innerText = "Total Time: " + (h>0?(h<10?"0"+h:h)+":":"")+(m<10?"0"+m:m)+":"+(s<10?"0"+s:s); }
     function closeSummaryAndReset() { document.getElementById("summary-overlay").style.display = "none"; restartForNewStudent(); }
-    
     function skipWord() { if (!isProcessing && currentIndex < currentWordList.length - 1) { currentIndex++; loadWord(); } else if (!isProcessing) { triggerLessonComplete(); } }
     function nextWord() { if (currentIndex < currentWordList.length - 1) { currentIndex++; loadWord(); } else { triggerLessonComplete(); } }
     function prevWord() { if (currentIndex > 0) { currentIndex--; loadWord(); } }
