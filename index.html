@@ -13,7 +13,6 @@
         #new-student-btn { background: #d32f2f; color: white; border: none; }
         #voice-select { background: #e3f2fd; border-color: #2196f3; max-width: 200px; }
         
-        /* Added min-height: 0 to all flex containers to prevent overlapping! */
         .main-responsive-area { display: flex; flex-direction: row; flex: 1; gap: 2vw; width: 100%; overflow: hidden; align-items: stretch; min-height: 0;}
         .left-half { flex: 0.45; display: flex; align-items: center; justify-content: center; background: #fcfcfc; border: 2px solid #eaeaea; border-radius: 15px; padding: 1.5vh; box-shadow: inset 0 0 20px rgba(0,0,0,0.02); overflow: hidden; min-height: 0;}
         #image-container { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
@@ -49,10 +48,11 @@
         
         /* Overlays */
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.97); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; border-radius: 15px;}
-        .overlay-title { font-size: clamp(24px, 6vmin, 40px); color: #2e7d32; font-weight: bold; text-align: center; padding: 10px;}
+        .overlay-title { font-size: clamp(24px, 6vmin, 40px); font-weight: bold; text-align: center; padding: 10px;}
         .overlay-btn { font-size: clamp(16px, 3vmin, 20px); font-weight: bold; padding: 12px 20px; border-radius: 10px; cursor: pointer; border: none; color: white; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.2);}
         .overlay-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.2);}
         .btn-yes { background: #34a853; } .btn-no { background: #d32f2f; } .btn-play { background: #1976d2; }
+        #round-stats { background: #e3f2fd; color: #1976d2; padding: 15px 25px; border-radius: 10px; font-size: clamp(14px, 3vmin, 18px); font-weight: bold; margin: 10px 0 25px 0; text-align: center; border: 2px solid #90caf9; line-height: 1.6; width: 80%; max-width: 400px;}
 
         /* PORTRAIT MODE FIX (Mobile vertical) */
         @media (orientation: portrait) { 
@@ -79,6 +79,8 @@
             .stats-container { padding-top: 0.5vh; }
             .letter-tile { padding: 0.5vh 2vw; font-size: clamp(16px, 5vh, 24px); box-shadow: 0 3px 0 #ad1457;}
             #answer-box, #scrambled-box { min-height: 6vh; padding: 1vh; }
+            #round-stats { padding: 8px 15px; margin: 5px 0 15px 0; font-size: 12px; line-height: 1.4;}
+            #end-lesson-emoji { font-size: 40px !important;}
         }
     </style>
 </head>
@@ -145,10 +147,11 @@
     </div>
 
     <div id="end-lesson-overlay" class="overlay">
-        <div style="font-size: 60px;">🎉</div>
-        <div id="end-lesson-text" class="overlay-title">शानदार! (Brilliant!)</div>
-        <div id="end-lesson-subtext" style="margin-top: 15px; font-size: clamp(16px, 4vmin, 24px); color: #444; font-weight: bold; text-align: center;">What would you like to do next?</div>
-        <div style="margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+        <div id="end-lesson-emoji" style="font-size: 60px;">🎉</div>
+        <div id="end-lesson-text" class="overlay-title"></div>
+        <div id="round-stats"></div>
+        <div style="font-size: clamp(14px, 3vmin, 20px); color: #444; font-weight: bold; text-align: center;">What would you like to do next?</div>
+        <div style="margin-top: 20px; display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
             <button id="btn-next-lesson" class="overlay-btn btn-yes" onclick="continueToNextLesson()">➡️ अगले पाठ (Next Lesson)</button>
             <button id="btn-next-level" class="overlay-btn btn-play" onclick="continueToNextLevel()">⬆️ अगले स्तर (Next Level)</button>
             <button class="overlay-btn btn-no" onclick="showFinalSummary()">🏆 समाप्त करें (Exit)</button>
@@ -197,13 +200,19 @@
     var currentMarks = 0, solvedWordsGlobal = [], synth = window.speechSynthesis, manualVoice = null;
     var currentWordList = [], currentIndex = 0, currentHindiWord = "", availableLetters = [], selectedLetters = [];
     var isProcessing = false;
+    
+    // NEW REPORT CARD VARIABLES
+    var lessonCompletedWords = [];
 
     function changeLesson() {
         var lesson = document.getElementById("lesson-select").value;
         currentWordList = shuffleArray(lessonsData[lesson].words.map(function(w) { var o = Object.assign({}, w); o.lessonOrigin = lesson; return o; }));
-        currentIndex = 0; loadWord();
+        currentIndex = 0; 
+        lessonCompletedWords = []; // Reset the counter for the new lesson
+        loadWord();
     }
-    function restartForNewStudent() { currentMarks = 0; solvedWordsGlobal = []; document.getElementById("marks-display").innerText = "Marks: 0"; resetTimer(); changeLesson(); }
+    
+    function restartForNewStudent() { currentMarks = 0; solvedWordsGlobal = []; lessonCompletedWords = []; document.getElementById("marks-display").innerText = "Marks: 0"; resetTimer(); changeLesson(); }
 
     function getMCQDecoys(correctWord, currentLessonKey) {
         var allWords = [];
@@ -240,6 +249,8 @@
         if (synth.getVoices().length > 0 || manualVoice) document.getElementById("pronounce-btn").style.display = "inline-block";
         document.getElementById("back-btn").style.display = (currentIndex > 0) ? "inline-block" : "none";
         
+        var isAlreadySolved = (solvedWordsGlobal.indexOf(currentHindiWord) !== -1);
+
         if (level === "1") {
             document.getElementById("answer-box").style.display = "none"; document.getElementById("scrambled-box").style.display = "none";
             var mcqBox = document.getElementById("mcq-box"); mcqBox.style.display = "flex";
@@ -247,19 +258,30 @@
             var options = shuffleArray([currentHindiWord, decoys[0], decoys[1]]);
             options.forEach(function(opt) {
                 var btn = document.createElement("button"); btn.className = "mcq-btn"; btn.innerText = opt;
+                if (isAlreadySolved && opt === currentHindiWord) { btn.classList.add("mcq-correct"); btn.disabled = true; }
                 btn.onclick = function() { checkMCQ(opt, btn); }; mcqBox.appendChild(btn);
             });
+            if (isAlreadySolved) { document.getElementById("next-btn").style.display = "inline-block"; document.getElementById("skip-btn").style.display = "none"; }
         } else {
             document.getElementById("answer-box").style.display = "flex"; document.getElementById("scrambled-box").style.display = "flex";
-            document.getElementById("mcq-box").style.display = "none"; document.getElementById("clear-btn").style.display = "inline-block";
+            document.getElementById("mcq-box").style.display = "none"; 
             var correctTiles = segmentHindi(currentHindiWord);
-            availableLetters = correctTiles.slice();
-            if (level === "3") { 
-                var pool = [];
-                for(var i=0; i<lessonOrder.length; i++) { var k = lessonOrder[i]; if(keyboardData[k]) pool = pool.concat(keyboardData[k].c).concat(keyboardData[k].v); if(k === currentWordList[currentIndex].lessonOrigin) break;}
-                availableLetters.push(pool[Math.floor(Math.random()*pool.length)]);
+            
+            if (isAlreadySolved) {
+                document.getElementById("clear-btn").style.display = "none"; document.getElementById("next-btn").style.display = "inline-block"; document.getElementById("skip-btn").style.display = "none";
+                selectedLetters = correctTiles.slice(); availableLetters = []; updateUI();
+                document.getElementById("answer-box").classList.add("glow-success");
+                var tiles = document.querySelectorAll("#answer-box .letter-tile"); for(var i=0; i<tiles.length; i++) tiles[i].classList.add("tile-correct");
+            } else {
+                document.getElementById("clear-btn").style.display = "inline-block";
+                availableLetters = correctTiles.slice();
+                if (level === "3") { 
+                    var pool = [];
+                    for(var i=0; i<lessonOrder.length; i++) { var k = lessonOrder[i]; if(keyboardData[k]) pool = pool.concat(keyboardData[k].c).concat(keyboardData[k].v); if(k === currentWordList[currentIndex].lessonOrigin) break;}
+                    availableLetters.push(pool[Math.floor(Math.random()*pool.length)]);
+                }
+                availableLetters = shuffleArray(availableLetters); selectedLetters = []; updateUI();
             }
-            availableLetters = shuffleArray(availableLetters); selectedLetters = []; updateUI();
         }
         startTimer();
     }
@@ -277,6 +299,7 @@
             if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) {
                 currentMarks += 1; 
                 solvedWordsGlobal.push(currentHindiWord); 
+                if (lessonCompletedWords.indexOf(currentHindiWord) === -1) lessonCompletedWords.push(currentHindiWord);
                 document.getElementById("marks-display").innerText = "Marks: " + currentMarks; 
                 msgBox.innerText = "🌟 बहुत बढ़िया! (Excellent!)";
                 msgBox.style.color = "#2e7d32";
@@ -309,7 +332,9 @@
 
             if (solvedWordsGlobal.indexOf(currentHindiWord) === -1) {
                 currentMarks += parseInt(document.getElementById("level-select").value);
-                solvedWordsGlobal.push(currentHindiWord); document.getElementById("marks-display").innerText = "Marks: " + currentMarks; 
+                solvedWordsGlobal.push(currentHindiWord); 
+                if (lessonCompletedWords.indexOf(currentHindiWord) === -1) lessonCompletedWords.push(currentHindiWord);
+                document.getElementById("marks-display").innerText = "Marks: " + currentMarks; 
                 msgBox.innerText = "🌟 बहुत बढ़िया! (Excellent!)";
                 msgBox.style.color = "#2e7d32";
             } else {
@@ -328,11 +353,35 @@
         selectedLetters.forEach(function(l, i) { var d = document.createElement("div"); d.className = "letter-tile"; d.innerText = l; d.onclick = function() { moveLetter(i, false); }; aBox.appendChild(d); });
     }
 
+    // --- SMART REPORT CARD LOGIC ---
     function triggerLessonComplete() {
-        pauseTimer(); clapSound.play().catch(function(){});
+        pauseTimer(); 
         var currentLessonIdx = lessonOrder.indexOf(document.getElementById("lesson-select").value);
         var levelVal = parseInt(document.getElementById("level-select").value);
         
+        var totalW = currentWordList.length;
+        var compW = lessonCompletedWords.length;
+        var skipW = totalW - compW; // The math never lies!
+
+        // Zero Effort Detector!
+        if (compW === 0) {
+            document.getElementById("end-lesson-emoji").innerText = "👀";
+            document.getElementById("end-lesson-text").innerText = "ध्यान दें! (Attention!)";
+            document.getElementById("end-lesson-text").style.color = "#f57c00";
+        } else {
+            document.getElementById("end-lesson-emoji").innerText = "🎉";
+            document.getElementById("end-lesson-text").innerText = "शानदार! (Brilliant!)";
+            document.getElementById("end-lesson-text").style.color = "#2e7d32";
+            clapSound.play().catch(function(){});
+        }
+
+        var h = Math.floor(timerSeconds/3600), m = Math.floor((timerSeconds%3600)/60), s = timerSeconds%60;
+        var timeStr = (h>0?(h<10?"0"+h:h)+":":"")+(m<10?"0"+m:m)+":"+(s<10?"0"+s:s);
+
+        document.getElementById("round-stats").innerHTML =
+            "Total Marks: <span style='color:#d32f2f'>" + currentMarks + "</span> | Time: " + timeStr + "<br>" +
+            "Words: " + totalW + " | Solved: <span style='color:#2e7d32'>" + compW + "</span> | Skipped: <span style='color:#f57c00'>" + skipW + "</span>";
+
         document.getElementById("btn-next-lesson").style.display = (currentLessonIdx < lessonOrder.length - 1) ? "inline-block" : "none";
         document.getElementById("btn-next-level").style.display = (levelVal < 3) ? "inline-block" : "none";
         
@@ -356,7 +405,8 @@
 
     function showFinalSummary() { document.getElementById("end-lesson-overlay").style.display = "none"; document.getElementById("summary-overlay").style.display = "flex"; document.getElementById("final-score-text").innerText = "Total Marks: " + currentMarks; var h = Math.floor(timerSeconds/3600), m = Math.floor((timerSeconds%3600)/60), s = timerSeconds%60; document.getElementById("final-time-text").innerText = "Total Time: " + (h>0?(h<10?"0"+h:h)+":":"")+(m<10?"0"+m:m)+":"+(s<10?"0"+s:s); }
     function closeSummaryAndReset() { document.getElementById("summary-overlay").style.display = "none"; restartForNewStudent(); }
-    function skipWord() { if (currentIndex < currentWordList.length - 1) { currentIndex++; loadWord(); } else { triggerLessonComplete(); } }
+    
+    function skipWord() { if (!isProcessing && currentIndex < currentWordList.length - 1) { currentIndex++; loadWord(); } else if (!isProcessing) { triggerLessonComplete(); } }
     function nextWord() { if (currentIndex < currentWordList.length - 1) { currentIndex++; loadWord(); } else { triggerLessonComplete(); } }
     function prevWord() { if (currentIndex > 0) { currentIndex--; loadWord(); } }
     function clearAnswer() { if(isProcessing) return; availableLetters = availableLetters.concat(selectedLetters); selectedLetters = []; updateUI(); }
